@@ -406,6 +406,7 @@
       color: #fef3c7; margin: 14px 2px 6px 2px;
     }
   </style>
+  <script src="vendor/pdfjs/pdfjs-lite.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
@@ -484,8 +485,49 @@
     /* =========================
        KONFIG & STAN SESJI
     ==========================*/
-    if (window.pdfjsLib) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.worker.min.js';
+    const pdfRuntime = {
+      source: 'uninitialized',
+      workerConfigured: false,
+      lastError: null,
+      lastUsed: null
+    };
+
+    function configurePdfJsRuntime() {
+      if (!window.pdfjsLib) return false;
+      if (!pdfRuntime.workerConfigured) {
+        if (pdfjsLib.GlobalWorkerOptions) {
+          try {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = null;
+            if ('workerPort' in pdfjsLib.GlobalWorkerOptions) {
+              pdfjsLib.GlobalWorkerOptions.workerPort = null;
+            }
+          } catch (err) {
+            console.warn('Nie udało się ustawić workerSrc dla pdf.js:', err);
+          }
+        }
+        if (typeof pdfjsLib.disableWorker !== 'undefined') {
+          try {
+            pdfjsLib.disableWorker = true;
+          } catch (err) {
+            console.warn('Nie udało się wyłączyć workera pdf.js:', err);
+          }
+        }
+        pdfRuntime.workerConfigured = true;
+      }
+      pdfRuntime.source = 'pdfjs';
+      return true;
+    }
+
+    function detectPdfSupport() {
+      if (configurePdfJsRuntime()) {
+        return 'pdfjs';
+      }
+      if (window.pdfjsLite) {
+        pdfRuntime.source = 'lite';
+        return 'lite';
+      }
+      pdfRuntime.source = 'none';
+      return 'none';
     }
 
     const chatMessages = document.getElementById('chat-messages');
@@ -840,26 +882,57 @@ Wszystko po polsku. Trzymaj jakość merytoryczną i spójność między rozdzia
     }
 
     async function extractTextFromPdf(file) {
-      if (!window.pdfjsLib) {
-        throw new Error('Brak biblioteki pdf.js — nie można przetworzyć pliku PDF.');
-      }
-      const data = await readFileAsArrayBuffer(file);
-      const loadingTask = pdfjsLib.getDocument({ data });
-      const pdfDoc = await loadingTask.promise;
-      const chunks = [];
-      for (let pageNumber = 1; pageNumber <= pdfDoc.numPages; pageNumber += 1) {
-        const page = await pdfDoc.getPage(pageNumber);
-        const content = await page.getTextContent();
-        const pageText = content.items
-          .map(item => item.str || '')
-          .join(' ')
-          .replace(/\s+/g, ' ')
-          .trim();
-        if (pageText) {
-          chunks.push(pageText);
+      const runtime = detectPdfSupport();
+      pdfRuntime.lastError = null;
+      pdfRuntime.lastUsed = null;
+      const arrayBuffer = await readFileAsArrayBuffer(file);
+      const typedData = arrayBuffer instanceof Uint8Array ? arrayBuffer : new Uint8Array(arrayBuffer);
+
+      if (runtime === 'pdfjs') {
+        try {
+          const loadingTask = pdfjsLib.getDocument({ data: typedData });
+          const pdfDoc = await loadingTask.promise;
+          const chunks = [];
+          for (let pageNumber = 1; pageNumber <= pdfDoc.numPages; pageNumber += 1) {
+            const page = await pdfDoc.getPage(pageNumber);
+            const content = await page.getTextContent();
+            const pageText = content.items
+              .map(item => item.str || '')
+              .join(' ')
+              .replace(/\s+/g, ' ')
+              .trim();
+            if (pageText) {
+              chunks.push(pageText);
+            }
+          }
+          if (chunks.length) {
+            pdfRuntime.lastUsed = 'pdfjs';
+            return chunks.join('\n\n');
+          }
+        } catch (err) {
+          pdfRuntime.lastError = err;
+          console.warn('Błąd podczas parsowania PDF przy użyciu pdf.js, próba użycia fallbacku:', err);
         }
       }
-      return chunks.join('\n\n');
+
+      if (window.pdfjsLite) {
+        try {
+          const fallbackText = await window.pdfjsLite.extractText(typedData);
+          if (fallbackText) {
+            pdfRuntime.lastUsed = 'lite';
+            return fallbackText;
+          }
+        } catch (err) {
+          pdfRuntime.lastError = err;
+          console.warn('Fallback pdfjs-lite nie zdołał wyodrębnić tekstu z PDF:', err);
+        }
+      }
+
+      if (pdfRuntime.lastError) {
+        throw new Error(`Nie udało się przetworzyć PDF: ${pdfRuntime.lastError.message || pdfRuntime.lastError}`);
+      }
+
+      throw new Error('Brak obsługi plików PDF w tej przeglądarce. Dodaj bibliotekę pdf.js lub użyj wspieranego fallbacku.');
     }
 
     async function extractTextFromDocx(file) {
@@ -931,8 +1004,11 @@ Wszystko po polsku. Trzymaj jakość merytoryczną i spójność między rozdzia
       renderKnowledgeBaseAttachments();
 
       const truncatedNote = truncated ? '<br><span style="font-size:0.75rem;opacity:0.75;">⚠️ Treść skrócono do dostępnego limitu znaków.</span>' : '';
+      const fallbackNote = (ext === 'pdf' && pdfRuntime.lastUsed === 'lite')
+        ? '<br><span style="font-size:0.75rem;opacity:0.75;">ℹ️ Użyto lekkiego fallbacku PDF — formatowanie może być ograniczone.</span>'
+        : '';
       addAssistantNotification(
-        `<div class="knowledge-attachment-message">📎 <strong>${attachment.name}</strong> dołączono do kontekstu.${truncatedNote}</div>`,
+        `<div class="knowledge-attachment-message">📎 <strong>${attachment.name}</strong> dołączono do kontekstu.${truncatedNote}${fallbackNote}</div>`,
         `Załączono plik ${attachment.name} do kontekstu rozmowy.`
       );
     }

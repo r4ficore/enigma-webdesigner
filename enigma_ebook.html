@@ -141,32 +141,135 @@
     /* Panel zarządzania zaakceptowanymi rozdziałami */
     .chapter-management {
       display: none;
-      padding: 16px 24px 0 24px;
+      padding: 16px 24px;
       border-bottom: 1px solid rgba(255,255,255,0.08);
       background: rgba(12,12,12,0.85);
+      flex-shrink: 0;
+      gap: 12px;
     }
-    .chapter-management.has-items { display: block; }
+    .chapter-management.has-items {
+      display: flex;
+      flex-direction: column;
+    }
+    .chapter-management-toggle {
+      width: 100%;
+      background: rgba(24,24,24,0.85);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 10px;
+      color: #f6f6f6;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: left;
+      transition: border-color 0.2s ease, background 0.2s ease;
+    }
+    .chapter-management-toggle:hover {
+      background: rgba(34,34,34,0.9);
+    }
+    .chapter-management-toggle .toggle-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 0.75rem;
+    }
+    .chapter-management-toggle .toggle-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.75rem;
+      color: #d1d5db;
+    }
+    .chapter-management-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 26px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #d6b376;
+      color: #101010;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+    .chapter-management-toggle .toggle-icon {
+      transition: transform 0.2s ease;
+    }
+    .chapter-management.is-open .chapter-management-toggle {
+      border-color: #d6b376;
+      background: rgba(34,34,34,0.9);
+    }
+    .chapter-management.is-open .chapter-management-toggle .toggle-icon {
+      transform: rotate(180deg);
+    }
+    .chapter-management-panel {
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      background: rgba(24,24,24,0.88);
+      padding: 14px 16px 16px;
+    }
+    .chapter-management.is-open .chapter-management-panel {
+      display: flex;
+    }
     .chapter-management-header {
-      display: flex; justify-content: space-between; align-items: baseline;
-      gap: 12px; margin-bottom: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
     }
-    .chapter-management-header h3 {
-      margin: 0; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em;
-      color: #d6b376;
+    .chapter-management-header p {
+      margin: 0;
+      font-size: 0.72rem;
+      color: #9ca3af;
+      line-height: 1.4;
     }
-    .chapter-management-header span {
-      font-size: 0.7rem; color: #9ca3af;
+    .accepted-chapters-scroll {
+      max-height: 240px;
+      overflow-y: auto;
+      padding-right: 6px;
+      margin-top: 2px;
+      display: block;
+    }
+    .accepted-chapters-scroll::-webkit-scrollbar {
+      width: 6px;
+    }
+    .accepted-chapters-scroll::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.18);
+      border-radius: 999px;
     }
     #accepted-chapters-list {
-      list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
     }
     .accepted-chapter-item {
-      display: flex; justify-content: space-between; align-items: center;
-      gap: 12px; padding: 10px 12px; border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 10px; background: rgba(24,24,24,0.85);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 10px;
+      background: rgba(24,24,24,0.85);
     }
     .accepted-chapter-label {
-      font-size: 0.78rem; font-weight: 500; color: #f3f4f6;
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: #f3f4f6;
+      flex: 1;
+      min-width: 0;
     }
     .accepted-chapter-actions { display: flex; gap: 6px; flex-shrink: 0; }
     .accepted-chapter-actions button {
@@ -206,11 +309,21 @@
     </div>
 
     <div id="chapter-management" class="chapter-management">
-      <div class="chapter-management-header">
-        <h3>Zaakceptowane rozdziały</h3>
-        <span>Zarządzaj zapisanymi treściami lub poproś o ich poprawę.</span>
+      <button id="accepted-chapters-toggle" class="chapter-management-toggle" type="button" aria-expanded="false" aria-controls="accepted-chapters-panel">
+        <span class="toggle-title"><i class="fa-solid fa-check-double"></i>Zaakceptowane rozdziały</span>
+        <span class="toggle-meta">
+          <span id="accepted-chapters-count" class="chapter-management-count">0</span>
+          <i class="fa-solid fa-chevron-down toggle-icon" aria-hidden="true"></i>
+        </span>
+      </button>
+      <div id="accepted-chapters-panel" class="chapter-management-panel" hidden>
+        <div class="chapter-management-header">
+          <p>Zarządzaj zapisanymi treściami lub poproś o ich poprawę.</p>
+        </div>
+        <div class="accepted-chapters-scroll">
+          <ul id="accepted-chapters-list"></ul>
+        </div>
       </div>
-      <ul id="accepted-chapters-list"></ul>
     </div>
 
     <div id="chat-messages" class="chat-messages"></div>
@@ -255,7 +368,34 @@
     const closeHistoryBtn = document.getElementById('close-history');
     const historyList  = document.getElementById('history-list');
     const chapterManagement = document.getElementById('chapter-management');
+    const acceptedChaptersToggle = document.getElementById('accepted-chapters-toggle');
+    const acceptedChaptersPanel = document.getElementById('accepted-chapters-panel');
+    const acceptedChaptersCount = document.getElementById('accepted-chapters-count');
     const acceptedChaptersList = document.getElementById('accepted-chapters-list');
+
+    let acceptedChaptersOpen = false;
+
+    function setAcceptedChaptersOpen(isOpen) {
+      acceptedChaptersOpen = isOpen;
+      if (chapterManagement) {
+        chapterManagement.classList.toggle('is-open', isOpen);
+      }
+      if (acceptedChaptersToggle) {
+        acceptedChaptersToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      }
+      if (acceptedChaptersPanel) {
+        acceptedChaptersPanel.hidden = !isOpen;
+      }
+    }
+
+    if (acceptedChaptersToggle) {
+      acceptedChaptersToggle.addEventListener('click', () => {
+        if (!chapterManagement || !chapterManagement.classList.contains('has-items')) return;
+        setAcceptedChaptersOpen(!acceptedChaptersOpen);
+      });
+    }
+
+    setAcceptedChaptersOpen(false);
 
     let currentChatId = null;
 
@@ -552,9 +692,17 @@ Wszystko po polsku. Trzymaj jakość merytoryczną i spójność między rozdzia
       const items = [...ebookState.accepted].sort((a, b) => a.chapterIndex - b.chapterIndex);
       if (!items.length) {
         chapterManagement.classList.remove('has-items');
+        setAcceptedChaptersOpen(false);
+        if (acceptedChaptersCount) {
+          acceptedChaptersCount.textContent = '0';
+        }
         return;
       }
       chapterManagement.classList.add('has-items');
+      if (acceptedChaptersCount) {
+        acceptedChaptersCount.textContent = String(items.length);
+      }
+      setAcceptedChaptersOpen(acceptedChaptersOpen);
       for (const item of items) {
         const li = document.createElement('li');
         li.className = 'accepted-chapter-item';

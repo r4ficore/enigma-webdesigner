@@ -27,13 +27,15 @@
 - ✅ Dodaj akcje UI: kopiuj kod, zapis do pliku (np. `.html`), ekspandowanie/zamykanie bloków kodu, podświetlanie składni (jeśli lekkie), przyciski „Poproś o poprawki / Nowa wersja”.
 - ✅ Upewnij się, że chatbot komunikuje wymaganie pełnego outputu Landing Architect, jeśli użytkownik go nie poda (jednorazowa prośba startowa).
 - ✅ Zaimplementuj obsługę błędów i stanów edge-case (brak odpowiedzi, 502 -> ewentualne powtórzenie, przekroczenie limitów, brak połączenia), wyświetlając jasne komunikaty.
-- Status: w toku (monitoring ergonomii podczas testów Etap 5).
+- ✅ Dodaj ułatwienia ergonomiczne: szybkie wklejenie szablonu LA, skróty klawiaturowe (Ctrl/Cmd+Enter, Esc), odporność zapisu historii na błędy localStorage.
+- Status: ✅ zakończony.
 
 ## Etap 5: Testy i weryfikacja
 - Test ręczny otwarcia `enigma_designer.html` w przeglądarce i przejścia podstawowego flow: instrukcja startowa → wklejenie przykładowego outputu LA → wygenerowanie kodu → kopiowanie/pobranie.
-- Sprawdzenie responsywności (mobile/desktop) oraz czytelności bloków kodu (monospace, scroll, zachowanie formatowania). 
+- Sprawdzenie responsywności (mobile/desktop) oraz czytelności bloków kodu (monospace, scroll, zachowanie formatowania).
 - Weryfikacja, że odpowiedzi nie mieszają kodu z komentarzem i że wskaźnik pracy pojawia się przy długim generowaniu.
 - Krótki smoke test lokalnego API: czy request do `deepseek_proxy.php` jest wykonywany z prawidłowym payloadem (system prompt + user), obsługa błędów HTTP.
+- Status: w toku. Checklista i wyniki testów będą rejestrowane w `stage5_testing.md`.
 
 ## Etap 6: Porządki
 - Uaktualnij ewentualne teksty w README lub sekcje pomocnicze (jeśli wymagane) o nowym chatbocie.

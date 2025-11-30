@@ -203,6 +203,7 @@
             <button type="button" id="qa-improve"><i class="fa-solid fa-wand-magic-sparkles"></i> Poproś o poprawki</button>
             <button type="button" id="qa-variant"><i class="fa-solid fa-shuffle"></i> Nowy wariant layoutu</button>
             <button type="button" id="qa-review"><i class="fa-solid fa-list-check"></i> Podsumowanie sekcji</button>
+            <button type="button" id="qa-sample"><i class="fa-solid fa-file-circle-plus"></i> Wklej szablon LA</button>
           </div>
           <div class="input-area">
             <textarea id="user-input" placeholder="Wklej output Landing Architect lub poproś o poprawki…"></textarea>
@@ -292,7 +293,8 @@ Nigdy nie generuj kodu bez realnego outputu LA. Gdy go masz, zachowaj wierność
     const quickActions = [
       { id: 'qa-improve', text: 'Popraw wersję landing page\'a na podstawie poprzedniego outputu LA. Zmiany: ' },
       { id: 'qa-variant', text: 'Na bazie tego samego outputu LA przygotuj alternatywny wariant layoutu (inne akcenty wizualne, ten sam przekaz). Uwagi: ' },
-      { id: 'qa-review', text: 'Podsumuj otrzymany output LA i wskaż sekcje, które wymagają doprecyzowania przed kolejną iteracją kodu.' }
+      { id: 'qa-review', text: 'Podsumuj otrzymany output LA i wskaż sekcje, które wymagają doprecyzowania przed kolejną iteracją kodu.' },
+      { id: 'qa-sample', text: 'STYLE: #7 Ciemny wysoki kontrast\nSEKCJE: hero, sekcja atutów, social proof, oferta, CTA, FAQ, stopka\nTREŚCI: \n- Hero: Tytuł, lead, przycisk „Zamów demo”\n- Atuty: 3 karty z ikoną i opisem\n- Social proof: logotypy klientów\n- Oferta: 3 plany z ceną i CTA\n- CTA: pasek z przyciskiem\n- FAQ: 5 pytań/odpowiedzi\nNOTATKI DLA DESIGNERA/DEVA: Nowoczesny układ, gradientowe akcenty, subtelne animacje hover. Dodaj sticky navbar i przewijany FAQ.' }
     ];
 
     let messages = [];
@@ -473,16 +475,21 @@ Nigdy nie generuj kodu bez realnego outputu LA. Gdy go masz, zachowaj wierność
     }
 
     function persistHistory() {
-      const records = JSON.parse(localStorage.getItem(historyKey) || '[]');
-      const title = (messages.find(m => m.role === 'user')?.content || 'Nowa sesja').slice(0, 60);
-      const record = { id: currentSessionId, title, date: new Date().toISOString(), messages: JSON.parse(JSON.stringify(messages)) };
-      const existingIndex = records.findIndex(r => r.id === currentSessionId);
-      if (existingIndex >= 0) {
-        records[existingIndex] = record;
-      } else {
-        records.unshift(record);
+      try {
+        const records = JSON.parse(localStorage.getItem(historyKey) || '[]');
+        const title = (messages.find(m => m.role === 'user')?.content || 'Nowa sesja').slice(0, 60);
+        const record = { id: currentSessionId, title, date: new Date().toISOString(), messages: JSON.parse(JSON.stringify(messages)) };
+        const existingIndex = records.findIndex(r => r.id === currentSessionId);
+        if (existingIndex >= 0) {
+          records[existingIndex] = record;
+        } else {
+          records.unshift(record);
+        }
+        localStorage.setItem(historyKey, JSON.stringify(records.slice(0, 12)));
+      } catch (err) {
+        console.error('Persist history error', err);
+        showToast('Nie można zapisać historii (localStorage).');
       }
-      localStorage.setItem(historyKey, JSON.stringify(records.slice(0, 12)));
     }
 
     function loadHistoryList() {
@@ -567,6 +574,17 @@ Nigdy nie generuj kodu bez realnego outputu LA. Gdy go masz, zachowaj wierność
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         handleSend();
+      }
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        handleSend();
+      }
+      if (e.key === 'Escape') {
+        if (historyModal.classList.contains('open')) historyModal.classList.remove('open');
+        if (helpModal.classList.contains('open')) helpModal.classList.remove('open');
       }
     });
 

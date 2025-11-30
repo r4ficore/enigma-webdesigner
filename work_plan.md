@@ -5,6 +5,7 @@
 - Zanotuj, które fragmenty logiki można ponownie użyć dla designera (wysyłanie promptów systemowych, zarządzanie wiadomościami, obsługa limitów/timeoutów, zapisywanie historii lokalnej).
 - Zapoznaj się z `enigma_designer_prompt.md`, by upewnić się, jaką rolę i zasady ma mieć nowy chatbot (warunek startu, format outputu, limity długości ~2400 linii, sygnalizacja pracy modelu).
 - Sprawdź przykładowe strony w `landings/`, aby dopasować oczekiwany poziom UI/UX oraz elementy interaktywne dla landing pages.
+- Status: rozpoczęty. Notatki i wnioski zapisane w `stage1_analysis.md` (architektura, logika, elementy do re-use, wymagania promptu designera, inspiracje landingów).
 
 ## Etap 2: Projekt funkcjonalny enigma_designer.html
 - Zaprojektuj layout czatu na bazie stylistyki Enigma (ciemny motyw, komponenty jak w ebook writerze) z dostosowaniem do roli designera.

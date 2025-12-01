@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-  <title>Enigma E‑Book Builder</title>
+  <title>Enigma Ebook Writer</title>
 
   <!-- Fonts & Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -99,7 +99,7 @@
     .action-btn.primary { background:#d6b376; color:#101010; border-color:#d6b376; }
     .action-btn.danger  { border-color:#e26a6a; color:#ffdede; }
 
-    /* === PODGLĄD PLIKÓW TXT W BĄBLU CZATU === */
+    /* === PODGLĄD PLIKÓW TXT W BLOKU === */
     .file-block { margin-top:10px; border:1px solid rgba(255,255,255,.08); border-radius:12px; background:#141414; }
     .file-block-header { display:flex; justify-content:space-between; align-items:center; padding:10px 12px; gap:8px; }
     .file-name { font-size:12px; color:#d1d5db; font-weight:600; display:flex; align-items:center; gap:6px; }
@@ -413,7 +413,7 @@
 <body>
   <div class="chat-container">
     <div class="chat-header">
-      <div class="header-info"><h2 id="chat-title">Enigma E‑Book Builder</h2></div>
+      <div class="header-info"><h2 id="chat-title">Enigma Ebook Writer</h2></div>
       <div class="header-menu">
         <i class="fa-solid fa-ellipsis" id="menu-icon"></i>
         <div class="menu-dropdown" id="menu-dropdown">
@@ -551,6 +551,30 @@
     const knowledgeFileInput = document.getElementById('knowledge-file-input');
     const knowledgeAttachmentsList = document.getElementById('knowledge-attachments-list');
     const knowledgeBaseSummary = document.getElementById('knowledge-base-summary');
+
+    let acceptedChaptersOpen = false;
+
+    function setAcceptedChaptersOpen(isOpen) {
+      acceptedChaptersOpen = isOpen;
+      if (chapterManagement) {
+        chapterManagement.classList.toggle('is-open', isOpen);
+      }
+      if (acceptedChaptersToggle) {
+        acceptedChaptersToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      }
+      if (acceptedChaptersPanel) {
+        acceptedChaptersPanel.hidden = !isOpen;
+      }
+    }
+
+    if (acceptedChaptersToggle) {
+      acceptedChaptersToggle.addEventListener('click', () => {
+        if (!chapterManagement || !chapterManagement.classList.contains('has-items')) return;
+        setAcceptedChaptersOpen(!acceptedChaptersOpen);
+      });
+    }
+
+    setAcceptedChaptersOpen(false);
 
     let acceptedChaptersOpen = false;
 
@@ -1246,9 +1270,8 @@ Wszystko po polsku. Trzymaj jakość merytoryczną i spójność między rozdzia
       resetKnowledgeBaseState({ preserveAttachments: false });
 
       addChatMessage(
-        `<strong>Witaj! Tu Enigma E‑Book Builder.</strong>
-        Zacznijmy: podaj proszę <em>temat</em> eBooka, docelową <em>grupę odbiorców</em> i preferowany <em>styl</em> (np. biznesowy/storytelling/techniczny).<br>
-        Potem ustalimy długość (liczbę rozdziałów i ~długość rozdziału), wygeneruję spis treści do akceptacji, a następnie rozdziały – każdy jako <u>plik .txt do podglądu i pobrania</u>.`);
+        `<strong>Zacznijmy:</strong>
+        Podaj temat Ebooka, docelową grupę odbiorców i określ preferowany styl (np. biznesowy/storytelling/techniczny). Potem ustalimy liczbę rozdziałów i ich ~długość, wygeneruję spis treści do akceptacji, a następnie rozdziały – każdy jako <u>plik .txt do podglądu i pobrania</u>.`);
       userInput.focus();
     }
 

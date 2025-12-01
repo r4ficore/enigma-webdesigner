@@ -371,11 +371,24 @@ Nigdy nie generuj kodu bez realnego outputu LA. Gdy go masz, zachowaj wierność
     }
 
     function splitAssistantContent(text) {
-      const codeRegex = /```html([\s\S]*?)```/i;
-      const match = text.match(codeRegex);
-      const codeBlock = match ? match[1].trim() : '';
-      const comment = match ? text.replace(match[0], '').trim() : text;
-      return { codeBlock, comment: comment === text && match ? '' : comment };
+      if (!text) return { codeBlock: '', comment: '' };
+      // 1) Prefer fenced ```html ... ``` blocks; tolerate missing closing fence.
+      const fenced = text.match(/```html([\s\S]*?)(```|$)/i);
+      const codeBlock = fenced ? fenced[1].trim() : '';
+      // 2) If there's HTML but no fence, treat the whole payload as code to keep formatting.
+      const looksLikeHTML = /<!doctype html|<html[\s>]/i.test(text.trim());
+      const fallbackCode = !codeBlock && looksLikeHTML ? text.trim() : '';
+
+      // 3) Build comment from the remainder only if it differs from the code portion.
+      let comment = '';
+      if (fenced) {
+        const before = text.slice(0, fenced.index).trim();
+        const after = text.slice(fenced.index + fenced[0].length).trim();
+        comment = [before, after].filter(Boolean).join('\n\n');
+      }
+      if (!comment && !codeBlock && !fallbackCode) comment = text.trim();
+
+      return { codeBlock: codeBlock || fallbackCode, comment };
     }
 
     function copyToClipboard(text) {

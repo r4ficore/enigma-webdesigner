@@ -357,7 +357,7 @@
     const params = new URLSearchParams(window.location.search);
     const storedProxy = localStorage.getItem('enigma_proxy_url');
     const proxyUrl = (() => {
-      const url = params.get('proxy')?.trim() || storedProxy || 'deepseek_proxy.php';
+      const url = params.get('proxy')?.trim() || storedProxy || 'gemini_proxy.php';
       if (params.get('proxy')) {
         localStorage.setItem('enigma_proxy_url', url);
       }
@@ -366,7 +366,7 @@
 
     const staticHost = /\.github\.io$/i.test(window.location.hostname) || window.location.hostname === 'github.io';
     if (staticHost && !params.get('proxy') && !storedProxy) {
-      addMessage('system', 'Wygląda, że korzystasz z hostingu statycznego (np. GitHub Pages). Dodaj parametr ?proxy=https://twoj-serwer.pl/deepseek_proxy.php lub uruchom stronę z serwera obsługującego PHP.');
+      addMessage('system', 'Wygląda, że korzystasz z hostingu statycznego (np. GitHub Pages). Dodaj parametr ?proxy=https://twoj-serwer.pl/gemini_proxy.php lub uruchom stronę z serwera obsługującego PHP.');
     }
 
     function handleSend() {
@@ -375,7 +375,7 @@
 
       addMessage('user', content);
       userInput.value = '';
-      sendToDeepSeek();
+      sendToGemini();
     }
 
     function normalizeError(err, fallback = '') {
@@ -412,21 +412,21 @@
       const tail = latestChunk.slice(-400);
       const continuationPrompt = `Kontynuuj generowanie kodu HTML dokładnie od miejsca, w którym przerwałeś. Nie powtarzaj wcześniejszego fragmentu. Zacznij od kontynuacji po tym tekście:\n${tail}`;
       addMessage('user', continuationPrompt);
-      await sendToDeepSeek(true);
+      await sendToGemini(true);
       autoContinuationInFlight = false;
     }
 
-    async function sendToDeepSeek(skipAutoContinuation = false) {
+    async function sendToGemini(skipAutoContinuation = false) {
       typingEl.style.display = 'flex';
       longRunEl.classList.add('active');
       sendBtn.disabled = true;
 
       const historyWindow = messages.slice(-10);
       const payload = {
-        model: 'deepseek-reasoner',
+        model: 'gemini-3.0-pro',
         messages: [{ role: 'system', content: DESIGNER_SYSTEM_PROMPT }, ...historyWindow.map(m => ({ role: m.role, content: m.content }))],
-        max_tokens: 7800,
-        temperature: 0.4
+        max_output_tokens: 9000,
+        temperature: 0.35
       };
 
       try {
@@ -451,7 +451,7 @@
         if (!res.ok) {
           const apiError = normalizeError(data?.error) || data?.message || (responseText ? responseText.trim() : '');
           const staticHint = (res.status === 404 || res.status === 405) && staticHost
-            ? ' Wygląda na to, że serwer statyczny nie obsługuje PHP. Dodaj parametr ?proxy=https://twoj-serwer.pl/deepseek_proxy.php lub uruchom lokalnie z PHP.'
+            ? ' Wygląda na to, że serwer statyczny nie obsługuje PHP. Dodaj parametr ?proxy=https://twoj-serwer.pl/gemini_proxy.php lub uruchom lokalnie z PHP.'
             : '';
           const guidance = apiError ? ` Szczegóły: ${apiError}` : '';
           showToast(`Problem z API (kod ${res.status}).${guidance}${staticHint}`);
@@ -463,9 +463,11 @@
         }
 
         const assistantMessage = data?.choices?.[0]?.message?.content || 'Brak odpowiedzi od modelu.';
+        const finishReason = data?.choices?.[0]?.finish_reason || '';
         addMessage('assistant', assistantMessage);
 
-        if (!skipAutoContinuation && isLikelyTruncated(assistantMessage)) {
+        const endedByLimit = typeof finishReason === 'string' && finishReason.toLowerCase().includes('max');
+        if (!skipAutoContinuation && (isLikelyTruncated(assistantMessage) || endedByLimit)) {
           addMessage('system', 'Wygląda, że odpowiedź mogła zostać ucięta. Automatycznie proszę o dokończenie…');
           await requestContinuation(assistantMessage);
         }

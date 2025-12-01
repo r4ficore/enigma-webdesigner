@@ -280,6 +280,120 @@
     .accepted-chapter-actions button:hover { background: #2a2a2e; }
     .accepted-chapter-actions .danger { border-color: #e26a6a; color: #ffb6b6; }
 
+    .knowledge-base-widget {
+      margin: 18px 0 12px;
+      padding: 14px 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      background: rgba(20,20,24,0.92);
+      color: #f8fafc;
+    }
+    .knowledge-base-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      justify-content: space-between;
+    }
+    .knowledge-base-summary {
+      font-size: 0.78rem;
+      opacity: 0.82;
+    }
+    .knowledge-upload-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, #1f2937, #111827);
+      color: #f8fafc;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      border-radius: 10px;
+      padding: 8px 14px;
+      font-size: 0.82rem;
+      cursor: pointer;
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+    .knowledge-upload-btn:hover {
+      background: linear-gradient(135deg, #243043, #121826);
+      border-color: rgba(248, 250, 252, 0.45);
+    }
+    .knowledge-attachments-list {
+      list-style: none;
+      margin: 12px 0 0;
+      padding: 0;
+      max-height: 180px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .knowledge-attachment-item {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.55);
+      border: 1px solid rgba(148, 163, 184, 0.15);
+    }
+    .knowledge-attachment-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+    .knowledge-attachment-name {
+      font-size: 0.85rem;
+      font-weight: 600;
+      word-break: break-word;
+    }
+    .knowledge-attachment-meta {
+      font-size: 0.72rem;
+      color: rgba(226, 232, 240, 0.8);
+    }
+    .knowledge-attachment-actions {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+    }
+    .knowledge-attachment-remove {
+      background: rgba(220, 38, 38, 0.15);
+      border: 1px solid rgba(248, 113, 113, 0.35);
+      color: #fecaca;
+      border-radius: 8px;
+      font-size: 0.72rem;
+      padding: 4px 10px;
+      cursor: pointer;
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+    .knowledge-attachment-remove:hover {
+      background: rgba(220, 38, 38, 0.25);
+      border-color: rgba(248, 113, 113, 0.6);
+    }
+    .knowledge-empty-state {
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px dashed rgba(148, 163, 184, 0.35);
+      text-align: center;
+      font-size: 0.78rem;
+      color: rgba(226, 232, 240, 0.7);
+      background: rgba(15, 23, 42, 0.3);
+    }
+    .knowledge-attachment-message {
+      background: rgba(14, 116, 144, 0.16);
+      border-left: 4px solid rgba(14, 165, 233, 0.65);
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 0.86rem;
+      color: #e0f2fe;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .knowledge-attachment-message strong {
+      color: #bae6fd;
+    }
+
     /* Bloki reasoning */
     .file-block.reasoning .file-block-header {
       background: rgba(214,179,118,0.12);
@@ -292,7 +406,9 @@
       color: #fef3c7; margin: 14px 2px 6px 2px;
     }
   </style>
+  <script src="vendor/pdfjs/pdfjs-lite.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
 <body>
   <div class="chat-container">
@@ -326,6 +442,24 @@
       </div>
     </div>
 
+    <div class="knowledge-base-widget" id="knowledge-base-widget">
+      <div class="knowledge-base-header">
+        <button id="knowledge-upload-btn" type="button" class="knowledge-upload-btn">
+          <i class="fa-solid fa-paperclip" aria-hidden="true"></i>
+          Dodaj materiały referencyjne
+        </button>
+        <div id="knowledge-base-summary" class="knowledge-base-summary">
+          0 / 5 plików · 0 / 60000 znaków
+        </div>
+      </div>
+      <ul id="knowledge-attachments-list" class="knowledge-attachments-list">
+        <li class="knowledge-empty-state" id="knowledge-empty-state">
+          Brak załączonych plików. Dodaj maksymalnie 5 materiałów (.pdf, .md, .docx, .doc, .txt).
+        </li>
+      </ul>
+      <input id="knowledge-file-input" type="file" accept=".pdf,.md,.doc,.docx,.txt" multiple hidden>
+    </div>
+
     <div id="chat-messages" class="chat-messages"></div>
 
     <div class="chat-input-container">
@@ -351,8 +485,49 @@
     /* =========================
        KONFIG & STAN SESJI
     ==========================*/
-    if (window.pdfjsLib) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.worker.min.js';
+    const pdfRuntime = {
+      source: 'uninitialized',
+      workerConfigured: false,
+      lastError: null,
+      lastUsed: null
+    };
+
+    function configurePdfJsRuntime() {
+      if (!window.pdfjsLib) return false;
+      if (!pdfRuntime.workerConfigured) {
+        if (pdfjsLib.GlobalWorkerOptions) {
+          try {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = null;
+            if ('workerPort' in pdfjsLib.GlobalWorkerOptions) {
+              pdfjsLib.GlobalWorkerOptions.workerPort = null;
+            }
+          } catch (err) {
+            console.warn('Nie udało się ustawić workerSrc dla pdf.js:', err);
+          }
+        }
+        if (typeof pdfjsLib.disableWorker !== 'undefined') {
+          try {
+            pdfjsLib.disableWorker = true;
+          } catch (err) {
+            console.warn('Nie udało się wyłączyć workera pdf.js:', err);
+          }
+        }
+        pdfRuntime.workerConfigured = true;
+      }
+      pdfRuntime.source = 'pdfjs';
+      return true;
+    }
+
+    function detectPdfSupport() {
+      if (configurePdfJsRuntime()) {
+        return 'pdfjs';
+      }
+      if (window.pdfjsLite) {
+        pdfRuntime.source = 'lite';
+        return 'lite';
+      }
+      pdfRuntime.source = 'none';
+      return 'none';
     }
 
     const chatMessages = document.getElementById('chat-messages');
@@ -372,6 +547,34 @@
     const acceptedChaptersPanel = document.getElementById('accepted-chapters-panel');
     const acceptedChaptersCount = document.getElementById('accepted-chapters-count');
     const acceptedChaptersList = document.getElementById('accepted-chapters-list');
+    const knowledgeUploadBtn = document.getElementById('knowledge-upload-btn');
+    const knowledgeFileInput = document.getElementById('knowledge-file-input');
+    const knowledgeAttachmentsList = document.getElementById('knowledge-attachments-list');
+    const knowledgeBaseSummary = document.getElementById('knowledge-base-summary');
+
+    let acceptedChaptersOpen = false;
+
+    function setAcceptedChaptersOpen(isOpen) {
+      acceptedChaptersOpen = isOpen;
+      if (chapterManagement) {
+        chapterManagement.classList.toggle('is-open', isOpen);
+      }
+      if (acceptedChaptersToggle) {
+        acceptedChaptersToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      }
+      if (acceptedChaptersPanel) {
+        acceptedChaptersPanel.hidden = !isOpen;
+      }
+    }
+
+    if (acceptedChaptersToggle) {
+      acceptedChaptersToggle.addEventListener('click', () => {
+        if (!chapterManagement || !chapterManagement.classList.contains('has-items')) return;
+        setAcceptedChaptersOpen(!acceptedChaptersOpen);
+      });
+    }
+
+    setAcceptedChaptersOpen(false);
 
     let acceptedChaptersOpen = false;
 
@@ -418,37 +621,23 @@
     };
 
     const knowledgeBase = {
-      url: 'knowledge_base/Analiza_rynku_Ebook_Copywriting.pdf',
-      status: 'idle',
-      loadPromise: null,
+      attachments: [],
+      totalChars: 0,
       text: '',
-      excerpt: '',
-      lastError: null,
-      notified: false
+      limits: {
+        maxFiles: 5,
+        maxTotalChars: 60000,
+        maxFileSize: 4 * 1024 * 1024
+      }
     };
 
-    function resetKnowledgeBaseState({ preserveText = true } = {}) {
-      knowledgeBase.notified = false;
-
-      if (!preserveText) {
+    function resetKnowledgeBaseState({ preserveAttachments = false } = {}) {
+      if (!preserveAttachments) {
+        knowledgeBase.attachments = [];
+        knowledgeBase.totalChars = 0;
         knowledgeBase.text = '';
-        knowledgeBase.excerpt = '';
       }
-
-      if (knowledgeBase.status === 'error') {
-        knowledgeBase.text = '';
-        knowledgeBase.excerpt = '';
-        knowledgeBase.status = 'idle';
-        knowledgeBase.loadPromise = null;
-        knowledgeBase.lastError = null;
-        return;
-      }
-
-      if (!preserveText) {
-        knowledgeBase.status = 'idle';
-        knowledgeBase.loadPromise = null;
-        knowledgeBase.lastError = null;
-      }
+      renderKnowledgeBaseAttachments();
     }
 
     // Pełny kontekst rozmowy (dla API)
@@ -572,65 +761,311 @@ Wszystko po polsku. Trzymaj jakość merytoryczną i spójność między rozdzia
     }
 
     function buildKnowledgeMessage({ query, stage }) {
-      if (!knowledgeBase.text) return '';
+      if (!knowledgeBase.text || !knowledgeBase.attachments.length) return '';
       const snippet = selectKnowledgeSnippets(query, 3400);
-      if (!snippet) return '';
       const stageHint = stage === 'chapters'
         ? 'Przygotowując kolejny rozdział'
         : stage === 'toc'
           ? 'Tworząc spis treści lub sekcję meta'
           : 'Tworząc zawartość eBooka';
 
-      return `${stageHint} korzystaj z materiału referencyjnego "Analiza_rynku_Ebook_Copywriting.pdf". Kluczowe fragmenty:\n${snippet}\n\nWłącz powyższe dane do treści własnymi słowami, zachowując spójność ze spisem treści i koncepcją ebooka.`;
+      const attachmentsList = knowledgeBase.attachments
+        .map(att => `• ${att.name}`)
+        .join('\n');
+
+      let message = `${stageHint} korzystaj z załączonych przez użytkownika materiałów referencyjnych. Lista dostępnych plików:\n${attachmentsList}`;
+      if (snippet) {
+        message += `\n\nNajistotniejsze fragmenty dopasowane do bieżącego zapytania:\n${snippet}`;
+      }
+      message += '\n\nWłącz powyższe dane do treści własnymi słowami, zachowując spójność ze spisem treści i koncepcją ebooka.';
+      return message;
     }
 
-    async function loadKnowledgeBase() {
-      if (!window.pdfjsLib) {
-        knowledgeBase.status = 'error';
-        knowledgeBase.lastError = new Error('Brak biblioteki pdf.js');
-        throw knowledgeBase.lastError;
-      }
-      if (knowledgeBase.status === 'loaded') {
-        return knowledgeBase;
-      }
-      if (knowledgeBase.status === 'loading' && knowledgeBase.loadPromise) {
-        await knowledgeBase.loadPromise;
-        return knowledgeBase;
+    function formatNumber(value) {
+      return Number(value || 0).toLocaleString('pl-PL');
+    }
+
+    function updateKnowledgeBaseAggregates() {
+      knowledgeBase.totalChars = knowledgeBase.attachments.reduce((sum, att) => sum + (att.charCount || 0), 0);
+      knowledgeBase.text = knowledgeBase.attachments.map(att => att.text).join('\n\n');
+    }
+
+    function formatBytes(bytes) {
+      if (!Number.isFinite(bytes)) return '0 B';
+      if (bytes < 1024) return `${bytes} B`;
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    }
+
+    function renderKnowledgeBaseAttachments() {
+      if (!knowledgeAttachmentsList) return;
+      knowledgeAttachmentsList.innerHTML = '';
+
+      const summaryText = `${knowledgeBase.attachments.length} / ${knowledgeBase.limits.maxFiles} plików · ${formatNumber(knowledgeBase.totalChars)} / ${formatNumber(knowledgeBase.limits.maxTotalChars)} znaków`;
+      if (knowledgeBaseSummary) {
+        knowledgeBaseSummary.textContent = summaryText;
       }
 
-      knowledgeBase.status = 'loading';
-      knowledgeBase.loadPromise = (async () => {
-        const loadingTask = pdfjsLib.getDocument({ url: knowledgeBase.url });
-        const pdfDoc = await loadingTask.promise;
-        const chunks = [];
+      if (!knowledgeBase.attachments.length) {
+        const empty = document.createElement('li');
+        empty.className = 'knowledge-empty-state';
+        empty.textContent = 'Brak załączonych plików. Dodaj maksymalnie 5 materiałów (.pdf, .md, .docx, .doc, .txt).';
+        knowledgeAttachmentsList.appendChild(empty);
+        return;
+      }
 
-        for (let pageNumber = 1; pageNumber <= pdfDoc.numPages; pageNumber += 1) {
-          const page = await pdfDoc.getPage(pageNumber);
-          const content = await page.getTextContent();
-          const pageText = content.items
-            .map(item => (item.str || ''))
-            .join(' ')
-            .replace(/\s+/g, ' ')
-            .trim();
-          if (pageText) {
-            chunks.push(pageText);
-          }
-        }
+      for (const att of knowledgeBase.attachments) {
+        const li = document.createElement('li');
+        li.className = 'knowledge-attachment-item';
+        li.dataset.attachmentId = att.id;
 
-        knowledgeBase.text = chunks.join('\n\n');
-        knowledgeBase.excerpt = buildExcerptFromParagraphs(splitParagraphs(knowledgeBase.text), 3400);
-        knowledgeBase.status = 'loaded';
-        knowledgeBase.lastError = null;
-      })().catch(err => {
-        knowledgeBase.status = 'error';
-        knowledgeBase.lastError = err;
-        throw err;
-      }).finally(() => {
-        knowledgeBase.loadPromise = null;
+        const info = document.createElement('div');
+        info.className = 'knowledge-attachment-info';
+
+        const name = document.createElement('div');
+        name.className = 'knowledge-attachment-name';
+        name.textContent = att.name;
+
+        const meta = document.createElement('div');
+        meta.className = 'knowledge-attachment-meta';
+        const charInfo = `${formatNumber(att.charCount)} znaków`;
+        meta.textContent = `${att.extension?.toUpperCase() || ''} · ${formatBytes(att.size)} · ${charInfo}`;
+
+        info.appendChild(name);
+        info.appendChild(meta);
+
+        const actions = document.createElement('div');
+        actions.className = 'knowledge-attachment-actions';
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'knowledge-attachment-remove';
+        removeBtn.textContent = 'Usuń';
+        removeBtn.dataset.attachmentId = att.id;
+        actions.appendChild(removeBtn);
+
+        li.appendChild(info);
+        li.appendChild(actions);
+        knowledgeAttachmentsList.appendChild(li);
+      }
+    }
+
+    function buildAttachmentContextMessages() {
+      if (!knowledgeBase.attachments.length) return [];
+      return knowledgeBase.attachments.map(att => ({
+        role: 'system',
+        content: `ZAŁĄCZNIK (${att.name}):\n${att.text}`
+      }));
+    }
+
+    function getFileExtension(filename = '') {
+      const match = filename.toLowerCase().match(/\.([a-z0-9]+)$/);
+      return match ? match[1] : '';
+    }
+
+    function isSupportedKnowledgeExtension(ext) {
+      return ['pdf', 'md', 'txt', 'doc', 'docx'].includes(ext);
+    }
+
+    function normalizeAttachmentText(text) {
+      return (text || '')
+        .replace(/\u0000/g, '')
+        .replace(/\r\n/g, '\n')
+        .replace(/[\t\f\v]+/g, ' ')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+    }
+
+    function addAssistantNotification(html, plainTextFallback = '') {
+      const wrap = addChatMessage(html, false);
+      const plainText = plainTextFallback || html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      conversationContext.fullHistory.push({
+        role: 'assistant',
+        content: plainText,
+        renderedHtml: wrap.innerHTML
       });
+      saveChat();
+      return wrap;
+    }
 
-      await knowledgeBase.loadPromise;
-      return knowledgeBase;
+    function readFileAsArrayBuffer(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error || new Error('Nie udało się odczytać pliku.'));
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    function readFileAsText(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error || new Error('Nie udało się odczytać pliku.'));
+        reader.readAsText(file);
+      });
+    }
+
+    async function extractTextFromPdf(file) {
+      const runtime = detectPdfSupport();
+      pdfRuntime.lastError = null;
+      pdfRuntime.lastUsed = null;
+      const arrayBuffer = await readFileAsArrayBuffer(file);
+      const typedData = arrayBuffer instanceof Uint8Array ? arrayBuffer : new Uint8Array(arrayBuffer);
+
+      if (runtime === 'pdfjs') {
+        try {
+          const loadingTask = pdfjsLib.getDocument({ data: typedData });
+          const pdfDoc = await loadingTask.promise;
+          const chunks = [];
+          for (let pageNumber = 1; pageNumber <= pdfDoc.numPages; pageNumber += 1) {
+            const page = await pdfDoc.getPage(pageNumber);
+            const content = await page.getTextContent();
+            const pageText = content.items
+              .map(item => item.str || '')
+              .join(' ')
+              .replace(/\s+/g, ' ')
+              .trim();
+            if (pageText) {
+              chunks.push(pageText);
+            }
+          }
+          if (chunks.length) {
+            pdfRuntime.lastUsed = 'pdfjs';
+            return chunks.join('\n\n');
+          }
+        } catch (err) {
+          pdfRuntime.lastError = err;
+          console.warn('Błąd podczas parsowania PDF przy użyciu pdf.js, próba użycia fallbacku:', err);
+        }
+      }
+
+      if (window.pdfjsLite) {
+        try {
+          const fallbackText = await window.pdfjsLite.extractText(typedData);
+          if (fallbackText) {
+            pdfRuntime.lastUsed = 'lite';
+            return fallbackText;
+          }
+        } catch (err) {
+          pdfRuntime.lastError = err;
+          console.warn('Fallback pdfjs-lite nie zdołał wyodrębnić tekstu z PDF:', err);
+        }
+      }
+
+      if (pdfRuntime.lastError) {
+        throw new Error(`Nie udało się przetworzyć PDF: ${pdfRuntime.lastError.message || pdfRuntime.lastError}`);
+      }
+
+      throw new Error('Brak obsługi plików PDF w tej przeglądarce. Dodaj bibliotekę pdf.js lub użyj wspieranego fallbacku.');
+    }
+
+    async function extractTextFromDocx(file) {
+      if (!window.mammoth) {
+        throw new Error('Brak biblioteki mammoth.js — nie można przetworzyć pliku DOCX.');
+      }
+      const arrayBuffer = await readFileAsArrayBuffer(file);
+      const result = await window.mammoth.convertToHtml({ arrayBuffer });
+      const html = result.value || '';
+      return html
+        .replace(/<style[\s\S]*?<\/style>/gi, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    async function ingestKnowledgeFile(file) {
+      const ext = getFileExtension(file.name);
+      if (!isSupportedKnowledgeExtension(ext)) {
+        throw new Error('Format pliku nie jest obsługiwany. Dopuszczalne: PDF, MD, DOCX, DOC lub TXT.');
+      }
+      if (knowledgeBase.attachments.length >= knowledgeBase.limits.maxFiles) {
+        throw new Error('Osiągnięto limit 5 załączników. Usuń istniejący plik, aby dodać nowy.');
+      }
+      if (file.size > knowledgeBase.limits.maxFileSize) {
+        throw new Error(`Plik jest zbyt duży (${formatBytes(file.size)}). Maksymalny rozmiar to ${formatBytes(knowledgeBase.limits.maxFileSize)}.`);
+      }
+
+      let rawText = '';
+      if (ext === 'pdf') {
+        rawText = await extractTextFromPdf(file);
+      } else if (ext === 'md' || ext === 'txt') {
+        rawText = await readFileAsText(file);
+      } else if (ext === 'docx') {
+        rawText = await extractTextFromDocx(file);
+      } else if (ext === 'doc') {
+        throw new Error('Format .doc nie jest obsługiwany. Zapisz plik jako .docx, .pdf, .md lub .txt.');
+      }
+
+      const normalized = normalizeAttachmentText(rawText);
+      if (!normalized) {
+        throw new Error('Nie udało się wyodrębnić tekstu z pliku.');
+      }
+
+      const availableChars = knowledgeBase.limits.maxTotalChars - knowledgeBase.totalChars;
+      if (availableChars <= 0) {
+        throw new Error('Osiągnięto limit znaków dla materiałów referencyjnych.');
+      }
+
+      let finalText = normalized;
+      let truncated = false;
+      if (normalized.length > availableChars) {
+        finalText = normalized.slice(0, availableChars);
+        truncated = true;
+      }
+
+      const attachment = {
+        id: `kb_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        name: file.name,
+        extension: ext,
+        size: file.size,
+        charCount: finalText.length,
+        text: finalText,
+        truncated
+      };
+
+      knowledgeBase.attachments.push(attachment);
+      updateKnowledgeBaseAggregates();
+      renderKnowledgeBaseAttachments();
+
+      const truncatedNote = truncated ? '<br><span style="font-size:0.75rem;opacity:0.75;">⚠️ Treść skrócono do dostępnego limitu znaków.</span>' : '';
+      const fallbackNote = (ext === 'pdf' && pdfRuntime.lastUsed === 'lite')
+        ? '<br><span style="font-size:0.75rem;opacity:0.75;">ℹ️ Użyto lekkiego fallbacku PDF — formatowanie może być ograniczone.</span>'
+        : '';
+      addAssistantNotification(
+        `<div class="knowledge-attachment-message">📎 <strong>${attachment.name}</strong> dołączono do kontekstu.${truncatedNote}${fallbackNote}</div>`,
+        `Załączono plik ${attachment.name} do kontekstu rozmowy.`
+      );
+    }
+
+    function removeKnowledgeAttachment(id) {
+      const index = knowledgeBase.attachments.findIndex(att => att.id === id);
+      if (index === -1) return;
+      const [removed] = knowledgeBase.attachments.splice(index, 1);
+      updateKnowledgeBaseAggregates();
+      renderKnowledgeBaseAttachments();
+      addAssistantNotification(
+        `<div class="knowledge-attachment-message">🗑️ <strong>${removed.name}</strong> został usunięty z materiałów referencyjnych.</div>`,
+        `Usunięto załącznik ${removed.name} z materiałów referencyjnych.`
+      );
+    }
+
+    async function handleKnowledgeFilesSelected(event) {
+      const files = Array.from(event.target?.files || []);
+      if (event.target) {
+        event.target.value = '';
+      }
+      if (!files.length) return;
+
+      for (const file of files) {
+        try {
+          await ingestKnowledgeFile(file);
+        } catch (err) {
+          addAssistantNotification(
+            `<div class="knowledge-attachment-message">⚠️ <strong>${file.name}</strong>: ${err.message}</div>`,
+            `Nie udało się przetworzyć pliku ${file.name}: ${err.message}`
+          );
+        }
+      }
     }
 
     function resetEbookState({ newSession = false } = {}) {
@@ -832,11 +1267,7 @@ Wszystko po polsku. Trzymaj jakość merytoryczną i spójność między rozdzia
       chatMessages.innerHTML = '';
       resetEbookState({ newSession: true });
 
-      resetKnowledgeBaseState({ preserveText: knowledgeBase.status === 'loaded' && !!knowledgeBase.text });
-
-      if (knowledgeBase.status === 'idle') {
-        loadKnowledgeBase().catch(err => console.warn('Knowledge base prefetch failed', err));
-      }
+      resetKnowledgeBaseState({ preserveAttachments: false });
 
       addChatMessage(
         `<strong>Zacznijmy:</strong>
@@ -864,10 +1295,7 @@ Wszystko po polsku. Trzymaj jakość merytoryczną i spójność między rozdzia
             currentChatId = id;
             conversationContext.fullHistory = chat.history;
             renderChatFromHistory();
-            resetKnowledgeBaseState({ preserveText: knowledgeBase.status === 'loaded' && !!knowledgeBase.text });
-            if (knowledgeBase.status === 'idle') {
-              loadKnowledgeBase().catch(err => console.warn('Knowledge base prefetch failed', err));
-            }
+            resetKnowledgeBaseState({ preserveAttachments: false });
             historyModal.style.display = 'none';
           });
           historyList.appendChild(li);
@@ -1058,27 +1486,17 @@ Wszystko po polsku. Trzymaj jakość merytoryczną i spójność między rozdzia
         || lowerUserText.includes('rozdział')
         || lowerUserText.includes('ebook'));
 
+      const hasKnowledgeBase = knowledgeBase.attachments.length > 0 && !!knowledgeBase.text;
       let knowledgeSystemMessage = '';
-      if (shouldAttachKnowledge) {
-        try {
-          await loadKnowledgeBase();
-          if (knowledgeBase.status === 'loaded' && knowledgeBase.text) {
-            const query = deriveKnowledgeQuery({
-              userText: lowerUserText,
-              explicitQuery: opts.knowledgeQuery || ''
-            });
-            knowledgeSystemMessage = buildKnowledgeMessage({
-              query,
-              stage: ebookState.stage
-            });
-          }
-        } catch (kbErr) {
-          console.error('Knowledge base load failed', kbErr);
-          if (!knowledgeBase.notified) {
-            addChatMessage('⚠️ Nie udało się załadować materiału referencyjnego Analiza_rynku_Ebook_Copywriting.pdf. Kontynuuję bez niego.', false);
-            knowledgeBase.notified = true;
-          }
-        }
+      if (shouldAttachKnowledge && hasKnowledgeBase) {
+        const query = deriveKnowledgeQuery({
+          userText: lowerUserText,
+          explicitQuery: opts.knowledgeQuery || ''
+        });
+        knowledgeSystemMessage = buildKnowledgeMessage({
+          query,
+          stage: ebookState.stage
+        });
       }
 
       // zbuduj pełne messages dla DeepSeek API
@@ -1097,8 +1515,15 @@ Wszystko po polsku. Trzymaj jakość merytoryczną i spójność między rozdzia
       ];
 
       if (knowledgeSystemMessage) {
-        messages.splice(1, 0, { role: 'system', content: knowledgeSystemMessage });
+        messages.push({ role: 'system', content: knowledgeSystemMessage });
       }
+
+      if (attachmentMessages.length) {
+        messages.push(...attachmentMessages);
+      }
+
+      messages.push(...apiHistory);
+      messages.push({ role: "user", content: userText });
 
       try {
         const data = await callDeepSeek(messages);

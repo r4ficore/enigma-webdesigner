@@ -31,6 +31,8 @@ const DEFAULT_MAX_OUTPUT     = 9000; // pozwala na pełny dokument HTML
 const MAX_OUTPUT_CAP         = 12000; // miękki limit bezpieczeństwa
 // Gemini 3 dostępny jest w interfejsie v1beta (REST generativelanguage.googleapis.com/v1beta).
 const API_BASE               = 'https://generativelanguage.googleapis.com/v1beta';
+// Awaryjny klucz testowy (zgodnie z instrukcją klienta); produkcja powinna korzystać ze zmiennej GEMINI_API_KEY.
+const DEFAULT_API_KEY        = 'AIzaSyAVVTwjngN_ygKATilrwHw-v4dgCQNYbfM';
 
 function respond(int $status, array $payload): void {
     http_response_code($status);
@@ -178,6 +180,10 @@ try {
     $apiKey = $input['api_key'] ?? getenv('GEMINI_API_KEY');
     if (!$apiKey) {
         $apiKey = getenv('GEMINI_API_KEY:');
+    }
+    // Fallback na zadany testowy klucz Gemini, jeśli środowisko nie jest skonfigurowane.
+    if (!$apiKey) {
+        $apiKey = DEFAULT_API_KEY;
     }
     if (!$apiKey) {
         respond(500, ['ok' => false, 'error' => 'Gemini API key not configured (set GEMINI_API_KEY or pass api_key in body).']);

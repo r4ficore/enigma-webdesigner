@@ -268,7 +268,9 @@
 
         const meta = document.createElement('div');
         meta.className = 'meta';
-        meta.innerHTML = `<span>${msg.role === 'user' ? 'Ty' : msg.role === 'assistant' ? 'Enigma Designer' : 'System'}</span>`;
+        const metaSpan = document.createElement('span');
+        metaSpan.textContent = msg.role === 'user' ? 'Ty' : msg.role === 'assistant' ? 'Enigma Designer' : 'System';
+        meta.appendChild(metaSpan);
         el.appendChild(meta);
 
         if (msg.role === 'assistant') {
@@ -369,11 +371,35 @@
       addMessage('system', 'Wygląda, że korzystasz z hostingu statycznego (np. GitHub Pages). Dodaj parametr ?proxy=https://twoj-serwer.pl/gemini_proxy.php lub uruchom stronę z serwera obsługującego PHP.');
     }
 
-    function handleSend() {
-      const content = userInput.value.trim();
-      if (!content) return;
+    const SAFE_INPUT_LIMIT = 4000;
 
-      addMessage('user', content);
+    function normalizeBrief(input) {
+      if (input && typeof input === 'object' && input.sections) return input;
+      if (typeof input === 'string') {
+        try {
+          const parsed = JSON.parse(input);
+          if (parsed && typeof parsed === 'object' && parsed.sections) return parsed;
+        } catch (_) {
+          // fallback to legacy text
+        }
+      }
+      return {
+        sections: [
+          { id: 'main', title: 'Brief', content: typeof input === 'string' ? input : String(input ?? '') }
+        ],
+        version: '1.0-legacy-adapted',
+      };
+    }
+
+    function handleSend() {
+      const rawContent = userInput.value.trim();
+      if (!rawContent) return;
+
+      const limited = rawContent.slice(0, SAFE_INPUT_LIMIT);
+      const brief = normalizeBrief(limited);
+      const serialized = typeof brief === 'string' ? brief : JSON.stringify(brief, null, 2);
+
+      addMessage('user', serialized);
       userInput.value = '';
       sendToGemini();
     }
@@ -416,71 +442,100 @@
       autoContinuationInFlight = false;
     }
 
+    const CHUNK_TOKENS = 1024;
+    const MAX_CHUNKS = 12;
+
+    async function fetchChunk(payload) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 300000);
+      const res = await fetch(proxyUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+      clearTimeout(timeout);
+      return res;
+    }
+
     async function sendToGemini(skipAutoContinuation = false) {
       typingEl.style.display = 'flex';
       longRunEl.classList.add('active');
       sendBtn.disabled = true;
 
       const historyWindow = messages.slice(-10);
-      const payload = {
-        model: 'gemini-3.0-pro',
-        messages: [{ role: 'system', content: DESIGNER_SYSTEM_PROMPT }, ...historyWindow.map(m => ({ role: m.role, content: m.content }))],
-        max_output_tokens: 9000,
-        temperature: 0.35
-      };
+      let combined = '';
+      let finishReason = '';
 
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 300000);
-        const res = await fetch(proxyUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-          signal: controller.signal
-        });
-        clearTimeout(timeout);
+      for (let i = 0; i < MAX_CHUNKS; i++) {
+        const continuationHint = combined
+          ? `Kontynuuj generowanie kodu HTML po tym fragmencie (nie powtarzaj wcześniejszego tekstu):\n${combined.slice(-400)}`
+          : '';
 
-        const responseText = await res.text();
-        let data;
+        const assembledMessages = [{ role: 'system', content: DESIGNER_SYSTEM_PROMPT }, ...historyWindow.map(m => ({ role: m.role, content: m.content }))];
+        if (continuationHint) {
+          assembledMessages.push({ role: 'user', content: continuationHint });
+        }
+
+        const payload = {
+          model: 'gemini-3.0-pro',
+          messages: assembledMessages,
+          max_output_tokens: CHUNK_TOKENS,
+          temperature: 0.35
+        };
+
         try {
-          data = responseText ? JSON.parse(responseText) : null;
-        } catch (e) {
-          data = null;
-        }
+          const res = await fetchChunk(payload);
+          const responseText = await res.text();
+          let data;
+          try {
+            data = responseText ? JSON.parse(responseText) : null;
+          } catch (_) {
+            data = null;
+          }
 
-        if (!res.ok) {
-          const apiError = normalizeError(data?.error) || data?.message || (responseText ? responseText.trim() : '');
-          const staticHint = (res.status === 404 || res.status === 405) && staticHost
-            ? ' Wygląda na to, że serwer statyczny nie obsługuje PHP. Dodaj parametr ?proxy=https://twoj-serwer.pl/gemini_proxy.php lub uruchom lokalnie z PHP.'
-            : '';
-          const guidance = apiError ? ` Szczegóły: ${apiError}` : '';
-          showToast(`Problem z API (kod ${res.status}).${guidance}${staticHint}`);
-          addMessage('system', `API zwróciło błąd. Spróbuj ponownie lub użyj przycisku szybkiej akcji, by doprecyzować prośbę.${guidance}${staticHint}`);
-          sendBtn.disabled = false;
-          typingEl.style.display = 'none';
-          longRunEl.classList.remove('active');
-          return;
-        }
+          if (!res.ok) {
+            const apiError = normalizeError(data?.error) || data?.message || (responseText ? responseText.trim() : '');
+            const staticHint = (res.status === 404 || res.status === 405) && staticHost
+              ? ' Wygląda na to, że serwer statyczny nie obsługuje PHP. Dodaj parametr ?proxy=https://twoj-serwer.pl/gemini_proxy.php lub uruchom lokalnie z PHP.'
+              : '';
+            const guidance = apiError ? ` Szczegóły: ${apiError}` : '';
+            showToast(`Problem z API (kod ${res.status}).${guidance}${staticHint}`);
+            addMessage('system', '⚠️ Problem z połączeniem. Spróbuj ponownie.');
+            break;
+          }
 
-        const assistantMessage = data?.choices?.[0]?.message?.content || 'Brak odpowiedzi od modelu.';
-        const finishReason = data?.choices?.[0]?.finish_reason || '';
-        addMessage('assistant', assistantMessage);
+          const assistantMessage = data?.choices?.[0]?.message?.content || '';
+          finishReason = data?.choices?.[0]?.finish_reason || '';
+          combined += assistantMessage;
 
-        const endedByLimit = typeof finishReason === 'string' && finishReason.toLowerCase().includes('max');
-        if (!skipAutoContinuation && (isLikelyTruncated(assistantMessage) || endedByLimit)) {
-          addMessage('system', 'Wygląda, że odpowiedź mogła zostać ucięta. Automatycznie proszę o dokończenie…');
-          await requestContinuation(assistantMessage);
+          const endedByLimit = typeof finishReason === 'string' && finishReason.toLowerCase().includes('max');
+          const truncated = isLikelyTruncated(assistantMessage) || endedByLimit;
+          if (!assistantMessage || !truncated) {
+            break;
+          }
+        } catch (err) {
+          const aborted = err?.name === 'AbortError';
+          const hint = aborted ? 'Limit czasu (5 minut) został przekroczony.' : 'Błąd połączenia z proxy/API.';
+          showToast(`${hint} Spróbuj ponownie lub skróć treść.`);
+          addMessage('system', '⚠️ Problem z połączeniem. Spróbuj ponownie.');
+          break;
         }
-      } catch (err) {
-        const aborted = err?.name === 'AbortError';
-        const hint = aborted ? 'Limit czasu (5 minut) został przekroczony.' : 'Błąd połączenia z proxy/API.';
-        showToast(`${hint} Spróbuj ponownie lub skróć treść.`);
-        addMessage('system', `${hint} Możesz ponowić wysłanie, skrócić prompt albo użyć innego endpointu proxy.`);
-      } finally {
-        sendBtn.disabled = false;
-        typingEl.style.display = 'none';
-        longRunEl.classList.remove('active');
       }
+
+      if (combined.trim()) {
+        addMessage('assistant', combined);
+        if (!skipAutoContinuation && isLikelyTruncated(combined)) {
+          addMessage('system', 'Wygląda, że odpowiedź mogła zostać ucięta. Automatycznie proszę o dokończenie…');
+          await requestContinuation(combined);
+        }
+      } else {
+        addMessage('system', '⚠️ Brak odpowiedzi od modelu. Spróbuj ponownie.');
+      }
+
+      typingEl.style.display = 'none';
+      longRunEl.classList.remove('active');
+      sendBtn.disabled = false;
     }
 
     function persistHistory() {
@@ -505,7 +560,10 @@
       historyList.innerHTML = '';
       const records = JSON.parse(localStorage.getItem(historyKey) || '[]');
       if (!records.length) {
-        historyList.innerHTML = '<li style="color: var(--muted);">Brak zapisanych rozmów.</li>';
+        const li = document.createElement('li');
+        li.style.color = 'var(--muted)';
+        li.textContent = 'Brak zapisanych rozmów.';
+        historyList.appendChild(li);
         return;
       }
       records.forEach((rec, idx) => {
@@ -513,7 +571,14 @@
         li.className = 'history-item';
         const meta = document.createElement('div');
         meta.className = 'meta';
-        meta.innerHTML = `<span class="title">${rec.title}</span><span style="color:var(--muted); font-size:0.85rem;">${new Date(rec.date).toLocaleString()}</span>`;
+        const titleSpan = document.createElement('span');
+        titleSpan.className = 'title';
+        titleSpan.textContent = rec.title;
+        const dateSpan = document.createElement('span');
+        dateSpan.style.color = 'var(--muted)';
+        dateSpan.style.fontSize = '0.85rem';
+        dateSpan.textContent = new Date(rec.date).toLocaleString();
+        meta.append(titleSpan, dateSpan);
         const actions = document.createElement('div');
         actions.className = 'history-actions';
         const openBtn = document.createElement('button');

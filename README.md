@@ -12,7 +12,7 @@ Repozytorium zawiera front-endy zasilane modelem Gemini (domyślnie **gemini-3.0
 
 ## Uruchomienie na serwerze współdzielonym (np. home.pl)
 1. Wgraj pliki frontendu (`enigma_designer.html`, opcjonalnie `enigma_ebook.html`) oraz `gemini_proxy.php` do tego samego katalogu.
-2. Skonfiguruj klucz API, np. w `.htaccess`:
+2. Skonfiguruj klucz API, np. w `.htaccess` (w repo znajduje się plik `.htaccess` z placeholderem):
    - `SetEnv GEMINI_API_KEY your_api_key_here`
 3. Upewnij się, że `gemini_proxy.php` jest dostępny publicznie przez HTTPS (np. `https://twojadomena.pl/gemini_proxy.php`). Jeśli serwer blokuje metody POST/OPTIONS, włącz je w konfiguracji lub skontaktuj się z obsługą hostingu.
 4. Otwórz `enigma_designer.html` w przeglądarce i użyj parametru `?proxy=https://twojadomena.pl/gemini_proxy.php`, aby wymusić własny endpoint backendu (adres zostanie też zapamiętany w lokalnym storage).

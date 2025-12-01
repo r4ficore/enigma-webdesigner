@@ -10,6 +10,15 @@ header('Access-Control-Allow-Headers: Content-Type');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { exit; }
 
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    echo json_encode([
+        'ok'    => false,
+        'error' => 'Unsupported method. Send a POST request with JSON { model, messages[] }.'
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
 // Włącz logowanie błędów
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
@@ -109,7 +118,7 @@ try {
     $input = json_decode($raw, true);
 
     if (!is_array($input)) {
-        respond(400, ['ok' => false, 'error' => 'Invalid JSON']);
+        respond(400, ['ok' => false, 'error' => 'Invalid JSON payload. Send { model, messages[] }']);
     }
 
     $model        = $input['model'] ?? 'deepseek-chat';

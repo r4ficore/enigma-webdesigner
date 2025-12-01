@@ -463,17 +463,31 @@ Nigdy nie generuj kodu bez realnego outputu LA. Gdy go masz, zachowaj wierność
       sendToDeepSeek();
     }
 
-    async function sendToDeepSeek() {
-      typingEl.style.display = 'flex';
-      longRunEl.classList.add('active');
-      sendBtn.disabled = true;
+      function normalizeError(err, fallback = '') {
+        if (!err) return fallback;
+        if (typeof err === 'string') return err;
+        if (typeof err === 'object') {
+          if (typeof err.message === 'string') return err.message;
+          try {
+            return JSON.stringify(err);
+          } catch (_) {
+            return fallback || '[object Object]';
+          }
+        }
+        return String(err) || fallback;
+      }
 
-      const payload = {
-        model: 'deepseek-chat',
-        messages: [{ role: 'system', content: DESIGNER_SYSTEM_PROMPT }, ...messages.map(m => ({ role: m.role, content: m.content }))],
-        max_tokens: 9000,
-        temperature: 0.4
-      };
+      async function sendToDeepSeek() {
+        typingEl.style.display = 'flex';
+        longRunEl.classList.add('active');
+        sendBtn.disabled = true;
+
+        const payload = {
+          model: 'deepseek-chat',
+          messages: [{ role: 'system', content: DESIGNER_SYSTEM_PROMPT }, ...messages.map(m => ({ role: m.role, content: m.content }))],
+          max_tokens: 9000,
+          temperature: 0.4
+        };
 
         try {
           const controller = new AbortController();
@@ -495,7 +509,7 @@ Nigdy nie generuj kodu bez realnego outputu LA. Gdy go masz, zachowaj wierność
           }
 
           if (!res.ok) {
-            const apiError = data?.error || data?.message || (responseText ? responseText.trim() : '');
+            const apiError = normalizeError(data?.error) || data?.message || (responseText ? responseText.trim() : '');
             const staticHint = (res.status === 404 || res.status === 405) && staticHost
               ? ' Wygląda na to, że serwer statyczny nie obsługuje PHP. Dodaj parametr ?proxy=https://twoj-serwer.pl/deepseek_proxy.php lub uruchom lokalnie z PHP.'
               : '';

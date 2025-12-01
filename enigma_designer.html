@@ -231,7 +231,7 @@
         <button aria-label="Zamknij pomoc" id="close-help"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <p>1) Wklej pełny output Landing Architect: <code>STYLE</code>, mapa sekcji, treści sekcji, <code>NOTATKI DLA DESIGNERA/DEVA</code>.</p>
-      <p>2) Poczekaj na wygenerowanie bloku <code>html</code> (do ~4800 linii dzięki zwiększonemu limitowi). W trakcie widać animację pracy modelu.</p>
+      <p>2) Poczekaj na wygenerowanie bloku <code>html</code> (do ~4000 linii w ramach limitu API 8192 tokenów). W trakcie widać animację pracy modelu.</p>
       <p>3) Skopiuj lub pobierz kod z paska nad blokiem. Możesz zapisać i przywrócić historię sesji.</p>
     </div>
   </div>
@@ -485,7 +485,7 @@ Nigdy nie generuj kodu bez realnego outputu LA. Gdy go masz, zachowaj wierność
         const payload = {
           model: 'deepseek-chat',
           messages: [{ role: 'system', content: DESIGNER_SYSTEM_PROMPT }, ...messages.map(m => ({ role: m.role, content: m.content }))],
-          max_tokens: 9000,
+          max_tokens: 7800,
           temperature: 0.4
         };
 

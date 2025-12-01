@@ -25,7 +25,8 @@ ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 ini_set('error_log', __DIR__ . '/deepseek_errors.log');
 
-const MAX_TOKENS_CAP = 10000;
+const MAX_TOKENS_CAP     = 8192; // zgodnie z limitem DeepSeek API
+const DEFAULT_MAX_TOKENS = 7800; // zostawiamy zapas poniżej górnego limitu
 
 function respond(int $status, array $payload): void {
     http_response_code($status);
@@ -138,7 +139,7 @@ try {
         'model'       => $model,
         'messages'    => optimizeMessages($messages), // OPTYMALIZACJA HISTORII
         'stream'      => false,
-        'max_tokens'  => MAX_TOKENS_CAP, // bezpieczny limit domyślny (podniesiony)
+        'max_tokens'  => DEFAULT_MAX_TOKENS, // bezpieczny limit domyślny w granicach API
         'temperature' => 0.7,
     ];
 
@@ -155,8 +156,9 @@ try {
             if ($value <= 0) {
                 respond(400, ['ok' => false, 'error' => 'max_tokens must be greater than 0']);
             }
-            // Ograniczamy do bezpiecznego pułapu, by uniknąć błędów 400 z API
-            $value = min($value, MAX_TOKENS_CAP);
+            if ($value > MAX_TOKENS_CAP) {
+                respond(400, ['ok' => false, 'error' => 'max_tokens exceeds DeepSeek limit (1–8192).']);
+            }
         }
 
         $payload[$opt] = $value;

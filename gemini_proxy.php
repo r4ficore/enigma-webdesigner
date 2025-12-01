@@ -169,14 +169,18 @@ try {
         respond(400, ['ok' => false, 'error' => 'Invalid JSON payload. Send { model, messages[] }']);
     }
 
+    if (!function_exists('curl_init')) {
+        respond(500, ['ok' => false, 'error' => 'cURL extension missing on the server; enable php-curl.']);
+    }
+
     // Obsługa literówki z dwukropkiem w nazwie zmiennej (GEMINI_API_KEY:),
     // aby uniknąć 500 przy błędnie skonfigurowanym .htaccess.
-    $apiKey = getenv('GEMINI_API_KEY');
+    $apiKey = $input['api_key'] ?? getenv('GEMINI_API_KEY');
     if (!$apiKey) {
         $apiKey = getenv('GEMINI_API_KEY:');
     }
     if (!$apiKey) {
-        respond(500, ['ok' => false, 'error' => 'Gemini API key not configured (set GEMINI_API_KEY).']);
+        respond(500, ['ok' => false, 'error' => 'Gemini API key not configured (set GEMINI_API_KEY or pass api_key in body).']);
     }
 
     [$model, $payload] = buildPayload($input);

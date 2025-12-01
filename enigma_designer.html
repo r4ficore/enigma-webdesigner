@@ -373,7 +373,8 @@
       addMessage('system', 'Wygląda, że korzystasz z hostingu statycznego (np. GitHub Pages). Dodaj parametr ?proxy=https://twoj-serwer.pl/gemini_proxy.php lub uruchom stronę z serwera obsługującego PHP.');
     }
 
-    const SAFE_INPUT_LIMIT = 4000;
+    // Limit zabezpiecza przed zbyt dużymi payloadami, ale pozwala na pełny brief LA.
+    const SAFE_INPUT_LIMIT = 12000;
 
     function normalizeBrief(input) {
       if (input && typeof input === 'object' && input.sections) return input;

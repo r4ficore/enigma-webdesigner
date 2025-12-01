@@ -9,6 +9,7 @@ Repozytorium zawiera front-endy zasilane modelem Gemini (domyślnie **gemini-3.0
 - PHP 8.0+ z rozszerzeniem cURL.
 - Dostęp wychodzący HTTPS do `https://generativelanguage.googleapis.com`.
 - Klucz API w zmiennej środowiskowej `GEMINI_API_KEY` (zalecane). Nie zapisuj tajnych kluczy w repozytorium.
+  - Opcjonalnie (tylko do testów) możesz przekazać `api_key` w payloadzie POST do `gemini_proxy.php`.
 
 ## Uruchomienie na serwerze współdzielonym (np. home.pl)
 1. Wgraj pliki frontendu (`enigma_designer.html`, opcjonalnie `enigma_ebook.html`) oraz `gemini_proxy.php` do tego samego katalogu.
